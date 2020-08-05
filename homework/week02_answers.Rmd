@@ -1,0 +1,40 @@
+---
+title: "Statistical Rethinking \\ Week 2"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+author: Jeff Shen
+output:
+  pdf_document: default
+---
+
+```{r, echo=FALSE}
+library(rethinking)
+data(Howell1)
+d <- Howell1
+plot(d$height ~ d$weight)
+hist(d$height); hist(d$weight)
+```
+```{r}
+
+```
+
+## Problem 1
+
+```{r}
+data(Howell1)
+```
+
+\newpage
+
+## Problem 2
+
+```{r}
+
+```
+\newpage
+
+## Problem 3
+
+```{r}
+
+```
+
