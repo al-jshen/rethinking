@@ -14,7 +14,8 @@ plot(d$height ~ d$weight)
 hist(d$height); hist(d$weight)
 ```
 ```{r}
-
+lines <- replicate(100, runif(10, -1, 1) %>% cumsum)
+matplot(lines, type='l')
 ```
 
 ## Problem 1

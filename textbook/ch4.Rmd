@@ -94,8 +94,8 @@ m43 <- quap(
         mu <- a + b * (weight - xbar),
         a ~ dnorm(178, 20),
         b ~ dunif(0, 1),
-        sigma ~ dnorm(0, 25)
-    ), data=d2, start=list(a=178, b=0.5, sigma=1)
+        sigma ~ dlnorm(0, 3)
+    ), data=d2, start=list(a=178, b=0.5, sigma=3)
 )
 
 precis(m43)
@@ -108,4 +108,82 @@ post <- extract.samples(m43, n=1e4)
 curve(mean(post$a) + mean(post$b) * (x - xbar), add=TRUE, col="red")
 ```
 
+```{r}
+plot(d2$height ~ d2$weight)
+for (i in 1:length(post)) {
+    curve(post[i, ]$a + post[i, ]$b * (x - xbar), add=TRUE)
+}
+```
+
+```{r}
+
+par(mfrow=c(2, 2))
+
+for (j in 1:4) {
+    N <- 50 * j
+    #dN <- slice_sample(d2, n = N, replace=FALSE)
+    dN <- d2[1:N, ]
+    mN <- quap(
+        alist(
+            height ~ dnorm(mu, sigma), 
+            mu <- a + b * (weight - mean(weight)),
+            a ~ dnorm(178, 20),
+            b ~ dunif(0, 1),
+            sigma ~ dunif(0, 50)
+        ), 
+        data=dN
+    )
+    
+    nlines <- 25
+    post <- extract.samples(mN, n=nlines)
+    plot(dN$height ~ dN$weight, xlim=range(d2$weight), ylim=range(d2$height), xlab="weight", ylab="height")
+    
+    for (i in 1:nlines) {
+        curve(post[i,]$a + post[i,]$b * (x - mean(dN$weight)), col=col.alpha('black', 0.2), add = TRUE)
+    }
+}
+
+```
+
+```{r}
+post <- extract.samples(m43)
+mu.50 <- post$a + post$b * (50 - xbar)
+dens(mu.50)
+PI(mu.50)
+```
+
+```{r}
+weight.seq <- seq(from=25, to=70, by=0.5)
+mu <- link(m43, data = data.frame(weight=weight.seq), n = 100)
+```
+
+```{r}
+plot(d2$height ~ d2$weight, type='n')
+for (i in 1:length(mu[,1])) {
+  points(weight.seq, mu[i,], pch=16, col=col.alpha('blue', 0.05))
+}
+```
+
+```{r}
+mu.mean <- apply(mu, 2, mean)
+mu.PI <- apply(mu, 2, PI, prob=0.89)
+
+plot(height ~ weight, data=d2, col=col.alpha(rangi2, 0.5))
+lines(weight.seq, mu.mean)
+shade(mu.PI, weight.seq)
+```
+
+```{r}
+sim.height <- sim(m43, data=list(weight=weight.seq))
+height.PI <- apply(sim.height, 2, PI, prob=0.89)
+
+plot(height ~ weight, d2, col=col.alpha(rangi2, 0.5))
+lines(weight.seq, mu.mean)
+shade(mu.PI, weight.seq)
+shade(height.PI, weight.seq)
+```
+
+```{r}
+precis(m43)
+```
 
