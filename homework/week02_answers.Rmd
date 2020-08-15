@@ -6,22 +6,58 @@ output:
   pdf_document: default
 ---
 
-```{r, echo=FALSE}
+## Problem 1
+```{r, include=FALSE}
 library(rethinking)
+library(dplyr)
 data(Howell1)
 d <- Howell1
 plot(d$height ~ d$weight)
 hist(d$height); hist(d$weight)
 ```
 ```{r}
-lines <- replicate(100, runif(10, -1, 1) %>% cumsum)
-matplot(lines, type='l')
+d2 <- d[d$weight > 28,]
+plot(height ~ weight, data=d2)
 ```
 
-## Problem 1
 
 ```{r}
-data(Howell1)
+mdl <- quap(
+    alist(
+        height ~ dnorm(mu, sigma),
+        mu <- a + b1 * (weight - mean(d$weight)),
+        a ~ dnorm(160, 20),
+        b1 ~ dlnorm(0, 1),
+        sigma ~ dlnorm(3, 1)
+    ), data=d2
+)
+
+precis(mdl)
+```
+
+```{r}
+weight.seq <- seq(28, 70, by=0.5)
+post <- link(mdl, data = list(weight=weight.seq))
+mu.mean <- apply(post, 2, mean)
+mu.PI <- apply(post, 2, PI, prob=0.89)
+height.sim <- sim(mdl, data = list(weight=weight.seq))
+height.mean <- apply(height.sim, 2, mean)
+height.PI <- apply(height.sim, 2, PI, prob=0.89)
+```
+
+```{r}
+plot(height ~ weight, data=d2)
+lines(weight.seq, height.mean, col='red')
+shade(mu.PI, weight.seq)
+shade(height.PI, weight.seq)
+```
+
+```{r}
+tgt <- data.frame(weight=c(45, 40, 65, 31, 53))
+tgt$height.mean <- sim(mdl, tgt) %>% apply(2, mean)
+tgt$height.pi.lower <- apply(sim(mdl, tgt), 2, PI, prob=0.89)[1,]
+tgt$height.pi.upper <- apply(sim(mdl, tgt), 2, PI, prob=0.89)[2,]
+tgt
 ```
 
 \newpage
@@ -29,13 +65,71 @@ data(Howell1)
 ## Problem 2
 
 ```{r}
-
+plot(d$height ~ log(d$weight))
 ```
+
+```{r}
+d$logweight <- log(d$weight)
+xbar <- mean(d$logweight)
+
+mdl <- quap(
+    alist(
+        height ~ dnorm(mu, sigma),
+        mu <- a + b * (logweight - xbar),
+        a ~ dnorm(120, 10),
+        b ~ dnorm(55, 10),
+        sigma ~ dlnorm(1, 1)
+    ), data=d
+)
+
+precis(mdl)
+```
+```{r}
+weight.seq <- seq(from=floor(min(d$logweight)), to=ceiling(max(d$logweight)), length.out = 50)
+post <- sim(mdl, list(logweight=weight.seq))
+post.mean <- apply(post, 2, mean)
+post.pi <- apply(post, 2, PI, prob=0.89)
+```
+
+```{r}
+plot(d$height ~ d$logweight)
+lines(weight.seq, post.mean, col='red')
+shade(post.pi, weight.seq)
+```
+
 \newpage
 
 ## Problem 3
 
 ```{r}
-
+plot(d$height ~ d$weight)
 ```
+
+```{r}
+priors <- data.frame(
+    # height ~ dnorm(mu, sigma),
+    # mu <- a + b1 * (weight - xbar) + b2 * (weight - xbar)^2,
+    # a ~ dnorm(130, 20),
+    # b1 ~ dnorm(0, 15),
+    # b2 ~ dnorm(0, 15),
+    # sigma ~ dlnorm(1, 1)
+    a=rnorm(1e2, 50, 5),
+    b1=rnorm(1e2, 4.2, 0.2),
+    b2=runif(1e2, -0.05, -0.01)
+)
+```
+
+```{r}
+plot(d$height ~ d$weight)
+for (i in 1:30) {
+    curve(priors$a[i] + 
+              priors$b1[i] * x +
+              priors$b2[i] * x^2,
+          from = min(d$weight),
+          to = max(d$weight),
+          add = TRUE)
+}
+```
+
+Kind of ended up fitting the data by hand (exactly what I shouldn't be doing). Hard to modify the prior distributions especially for $\beta_2$ because it doesn't really have a physical meaning. Not really used to thinking of things scaling with the square of weight, so hard to estimate what it should be without looking at the data. Only know it's negative, have no idea what the scale should be. 
 
